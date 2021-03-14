@@ -14,24 +14,32 @@ await slash.commands.bulkEdit([
 ]);
 
 export default async (req: ServerRequest) => {
-  if (req.method.toLowerCase() !== "post") return req.respond({ status: 400 });
+  if (req.method.toLowerCase() !== "post")
+    return req.respond({ status: 400, body: "method not allowed" });
 
+  const data = await Deno.readAll(req.body);
   const verify = slash.verifyKey(
-    await Deno.readAll(req.body),
+    data,
     req.headers.get("x-signature-ed25519") ?? "",
     req.headers.get("x-signature-timestamp") ?? ""
   );
-  if (!verify) return req.respond({ status: 401 });
+  if (!verify) return req.respond({ status: 401, body: "not authorized" });
 
-  req.respond({
-    body: JSON.stringify({
-      type: 4,
-      data: {
-        content: "Pong!",
-      },
-    }),
-    headers: new Headers({
-      "content-type": "application/json",
-    }),
+  const respond = (data: any) =>
+    req.respond({
+      body: JSON.stringify(data),
+      headers: new Headers({
+        "content-type": "application/json",
+      }),
+    });
+
+  const interaction = JSON.parse(new TextDecoder("utf-8").decode(data));
+  if (interaction.type == 0) respond({ type: 0 });
+
+  respond({
+    type: 4,
+    data: {
+      content: "Pong!",
+    },
   });
 };
